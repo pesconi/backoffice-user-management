@@ -58,6 +58,14 @@ The assessment's user domain does not define a human-readable login identifier. 
 
 PostgreSQL has a healthcheck. The backend entrypoint also waits with `pg_isready`, runs `npx prisma migrate deploy`, then `npx prisma db seed`, and finally starts the compiled server. The frontend depends on the backend healthcheck and talks to it over the Compose network.
 
+## Limitations and Production Next Steps
+
+This assessment intentionally treats every authenticated user as a back-office operator. A production deployment should introduce tenant ownership, a role model, an explicit administrator bootstrap process, and authorization policies for every management action.
+
+Session IDs are opaque UUID bearer tokens stored in the local database. A production session design should generate high-entropy tokens, persist only their hashes, rotate them on authentication-sensitive events, and define a distributed session and rate-limit store for horizontally scaled deployments. The frontend proxy limits session cookies to `HttpOnly` and `SameSite`, but production should also apply explicit origin checks and CSRF protections to state-changing routes.
+
+The included Docker Compose configuration and seed account are intended for local evaluation only. Production operations also require managed secrets, observability, backups, alerting, and a deployment-specific security review.
+
 ## Validation
 
 Run unit tests with `pnpm --filter @backoffice/backend test`. After starting the Compose stack, run browser flows with `pnpm test:e2e`. The browser suite covers registration with automatic sign-in, sign-in, terminated-session routing, user pagination, inactive-user validation, and theme persistence.

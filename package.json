@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "pnpm --recursive run build",
+    "lint": "eslint .",
     "test": "pnpm --recursive run test",
     "typecheck": "pnpm --recursive run typecheck",
     "test:e2e": "playwright test"
@@ -21,6 +22,10 @@
     ]
   },
   "devDependencies": {
-    "@playwright/test": "^1.64.0"
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.64.0",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.46.0"
   }
 }

@@ -4,7 +4,8 @@ This document maps every assessment requirement to an executable check or a shor
 
 ```sh
 docker compose down -v
-docker compose up --build
+docker compose up --build --wait
+pnpm lint
 pnpm test
 pnpm test:e2e
 pnpm typecheck
@@ -37,3 +38,4 @@ pnpm build
 | DL-03 | Project documentation in English | Review `README.md` and this matrix. |
 | DL-04 | Git repository with granular history | Run `git log --oneline`. |
 | DL-05 | No assessment branding in the deliverable | Review tracked files for assessment branding; no such references should be present. |
+| DL-06 | Continuous integration and static analysis | GitHub Actions runs linting, tests, type checks, builds, and the Compose-backed browser suite. |

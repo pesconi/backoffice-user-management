@@ -22,7 +22,7 @@ export class UserService {
     }
 
     async softDeleteUser(id: string, actorId: string): Promise<User> {
-        const user = await this.getUser(id);
+        await this.getUser(id);
         if (id === actorId) {
             throw new ForbiddenError('Administrators cannot delete their own account.');
         }
