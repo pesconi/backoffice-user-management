@@ -1,4 +1,4 @@
-import { UserRole, UserStatus, type User } from '@prisma/client';
+import { UserStatus, type User } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenError } from '../domain/errors.js';
 import { UserService } from './user.service.js';
@@ -11,7 +11,6 @@ const user = (status: UserStatus = UserStatus.active): User => ({
     email: 'ada@example.com',
     passwordHash: 'hash',
     status,
-    role: UserRole.user,
     loginsCounter: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -26,7 +25,6 @@ const repository = (currentUser: User): UserRepository => ({
     softDelete: vi.fn().mockResolvedValue(currentUser),
     incrementLoginsCounter: vi.fn(),
     findPage: vi.fn(),
-    countActiveAdmins: vi.fn().mockResolvedValue(2),
 });
 
 describe('UserService', () => {
@@ -34,7 +32,7 @@ describe('UserService', () => {
         const users = repository(user(UserStatus.inactive));
         const service = new UserService(users);
 
-        await expect(service.updateUser(user().id, { firstName: 'Grace' }, 'admin-id')).rejects.toBeInstanceOf(ForbiddenError);
+        await expect(service.updateUser(user().id, { firstName: 'Grace' })).rejects.toBeInstanceOf(ForbiddenError);
         expect(users.update).not.toHaveBeenCalled();
     });
 
@@ -42,8 +40,8 @@ describe('UserService', () => {
         const users = repository(user(UserStatus.inactive));
         const service = new UserService(users);
 
-        await service.updateUser(user().id, { role: UserRole.admin }, 'admin-id');
-        expect(users.update).toHaveBeenCalledWith(user().id, { role: UserRole.admin });
+        await service.updateUser(user().id, { status: UserStatus.active });
+        expect(users.update).toHaveBeenCalledWith(user().id, { status: UserStatus.active });
     });
 
     it('calculates offset pagination in the service boundary', async () => {
@@ -58,26 +56,16 @@ describe('UserService', () => {
         const users = repository(user());
         const service = new UserService(users);
 
-        await service.updateUser(user().id, { firstName: 'Grace' }, 'admin-id');
+        await service.updateUser(user().id, { firstName: 'Grace' });
         expect(users.update).toHaveBeenCalledWith(user().id, { firstName: 'Grace' });
     });
 
-    it('preserves the final active administrator', async () => {
-        const admin = { ...user(), role: UserRole.admin };
-        const users = repository(admin);
-        vi.mocked(users.countActiveAdmins).mockResolvedValue(1);
+    it('prevents users from deleting their own account', async () => {
+        const currentUser = user();
+        const users = repository(currentUser);
         const service = new UserService(users);
 
-        await expect(service.updateUser(admin.id, { status: UserStatus.inactive }, 'another-admin')).rejects.toBeInstanceOf(ForbiddenError);
-        expect(users.update).not.toHaveBeenCalled();
-    });
-
-    it('prevents an administrator from deleting their own account', async () => {
-        const admin = { ...user(), role: UserRole.admin };
-        const users = repository(admin);
-        const service = new UserService(users);
-
-        await expect(service.softDeleteUser(admin.id, admin.id)).rejects.toBeInstanceOf(ForbiddenError);
+        await expect(service.softDeleteUser(currentUser.id, currentUser.id)).rejects.toBeInstanceOf(ForbiddenError);
         expect(users.softDelete).not.toHaveBeenCalled();
     });
 });

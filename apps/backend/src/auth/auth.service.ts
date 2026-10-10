@@ -1,4 +1,4 @@
-import { UserRole, type Session, type User } from '@prisma/client';
+import { type Session, type User } from '@prisma/client';
 import { UnauthorizedError } from '../domain/errors.js';
 import { SessionService } from '../sessions/session.service.js';
 import { type UserRepository } from '../users/user.repository.js';
@@ -17,7 +17,6 @@ export class AuthService {
             lastName,
             email,
             passwordHash: await this.passwordHasher.hash(password),
-            role: UserRole.user,
         });
         const session = await this.sessions.createSession(user);
         await this.users.incrementLoginsCounter(user.id);

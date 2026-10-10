@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { PrismaClient, UserRole, UserStatus } from '@prisma/client';
+import { PrismaClient, UserStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const adminId = '00000000-0000-4000-8000-000000000001';
@@ -19,7 +19,6 @@ async function main() {
             lastName: 'Administrator',
             email: adminEmail,
             passwordHash: await argon2.hash(adminPassword),
-            role: UserRole.admin,
             status: UserStatus.active,
             id: adminId,
         },

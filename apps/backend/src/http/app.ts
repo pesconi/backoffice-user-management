@@ -1,7 +1,7 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyRequest } from 'fastify';
-import { type User, UserRole, UserStatus } from '@prisma/client';
+import { type User, UserStatus } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import { argonPasswordHasher } from '../auth/password-hasher.js';
@@ -16,12 +16,11 @@ const passwordSchema = z.string().min(12).max(128);
 const emailSchema = z.string().trim().email().max(254).transform((email) => email.toLowerCase());
 const signUpSchema = z.object({ firstName: z.string().trim().min(1).max(100), lastName: z.string().trim().min(1).max(100), email: emailSchema, password: passwordSchema }).strict();
 const signInSchema = z.object({ email: emailSchema, password: passwordSchema }).strict();
-const createUserSchema = signUpSchema.extend({ role: z.enum(UserRole).default(UserRole.user) });
+const createUserSchema = signUpSchema;
 const updateUserSchema = z.object({
     firstName: z.string().trim().min(1).max(100).optional(),
     lastName: z.string().trim().min(1).max(100).optional(),
     status: z.enum(UserStatus).optional(),
-    role: z.enum(UserRole).optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, 'At least one field is required.');
 const idParamsSchema = z.object({ id: z.uuid() });
 const usersQuerySchema = z.object({
@@ -125,7 +124,6 @@ export async function buildApp() {
             lastName: body.lastName,
             email: body.email,
             passwordHash: await argonPasswordHasher.hash(body.password),
-            role: body.role,
         });
         return reply.status(201).send({ user: toUserResponse(user) });
     });
@@ -133,7 +131,7 @@ export async function buildApp() {
     app.patch('/users/:id', { preHandler: requireAuthenticatedUser }, async (request) => {
         const { id } = parse(idParamsSchema, request.params);
         const body = parse(updateUserSchema, request.body);
-        return { user: toUserResponse(await users.updateUser(id, body, request.authenticatedUser!.id)) };
+        return { user: toUserResponse(await users.updateUser(id, body)) };
     });
 
     app.delete('/users/:id', { preHandler: requireAuthenticatedUser }, async (request, reply) => {

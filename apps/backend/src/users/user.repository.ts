@@ -1,8 +1,8 @@
 import { PrismaClient, Prisma, type User, UserStatus } from '@prisma/client';
 import { ConflictError } from '../domain/errors.js';
 
-export type CreateUserInput = Pick<User, 'firstName' | 'lastName' | 'email' | 'passwordHash' | 'role'>;
-export type UpdateUserInput = Partial<Pick<User, 'firstName' | 'lastName' | 'role' | 'status'>>;
+export type CreateUserInput = Pick<User, 'firstName' | 'lastName' | 'email' | 'passwordHash'>;
+export type UpdateUserInput = Partial<Pick<User, 'firstName' | 'lastName' | 'status'>>;
 
 export interface UserRepository {
     create(input: CreateUserInput): Promise<User>;
@@ -12,7 +12,6 @@ export interface UserRepository {
     softDelete(id: string): Promise<User>;
     incrementLoginsCounter(id: string): Promise<User>;
     findPage(skip: number, take: number): Promise<{ users: User[]; total: number }>;
-    countActiveAdmins(): Promise<number>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -81,9 +80,4 @@ export class PrismaUserRepository implements UserRepository {
         return { users, total };
     }
 
-    countActiveAdmins(): Promise<number> {
-        return this.prisma.user.count({
-            where: { role: 'admin', status: UserStatus.active, deletedAt: null },
-        });
-    }
 }

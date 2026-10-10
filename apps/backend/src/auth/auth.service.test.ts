@@ -1,4 +1,4 @@
-import { UserRole, UserStatus, type Session, type User } from '@prisma/client';
+import { UserStatus, type Session, type User } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { SessionService } from '../sessions/session.service.js';
 import type { SessionRepository } from '../sessions/session.repository.js';
@@ -8,7 +8,7 @@ import type { PasswordHasher } from './password-hasher.js';
 
 const user: User = {
     id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hash', status: UserStatus.active,
-    role: UserRole.user, loginsCounter: 0, createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
+    loginsCounter: 0, createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
 };
 
 const session: Session = {
@@ -23,7 +23,6 @@ const users: UserRepository = {
     softDelete: vi.fn(),
     incrementLoginsCounter: vi.fn().mockResolvedValue(user),
     findPage: vi.fn(),
-    countActiveAdmins: vi.fn(),
 };
 
 const sessions: SessionRepository = {
@@ -40,7 +39,7 @@ describe('AuthService', () => {
 
         await expect(service.signUp('Ada', 'Lovelace', 'ada@example.com', 'ValidPassword123!')).resolves.toEqual({ user, session });
 
-        expect(users.create).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hashed-password', role: UserRole.user });
+        expect(users.create).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hashed-password' });
         expect(sessions.create).toHaveBeenCalledWith(user.id);
         expect(users.incrementLoginsCounter).toHaveBeenCalledWith(user.id);
     });

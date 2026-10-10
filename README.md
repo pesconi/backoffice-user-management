@@ -23,7 +23,7 @@ Compose includes local development defaults, so an `.env` file is not required f
 
 The backend is intentionally available only on the internal Compose network. The frontend is bound to `127.0.0.1:3000`, limiting the local evaluation instance to the host machine.
 
-The Compose startup waits for PostgreSQL health, applies Prisma migrations, seeds the administrator, and starts both applications.
+The Compose startup waits for PostgreSQL health, applies Prisma migrations, seeds the local account, and starts both applications.
 
 ### Default Seeded Account
 
@@ -48,7 +48,7 @@ The API accepts a page and enforces `limit=6`. It converts the page into Prisma 
 
 The backend treats the session UUID as the auth token. Both registration and sign-in establish a session. The frontend receives it only through a Next.js route handler, which stores it in an HttpOnly, SameSite cookie. Browser code cannot read the session ID; authenticated route handlers relay it to the backend as a Bearer token.
 
-The dashboard follows the assessment assumption that an authenticated user is the operating administrator. Middleware validates the session with the backend before allowing protected routes or redirecting an authenticated user away from sign-in and sign-up pages.
+The dashboard follows the assessment assumption that an authenticated user is the operating administrator. The model intentionally has no role field because the assessment defines no role-based access-control requirement. Middleware validates the session with the backend before allowing protected routes or redirecting an authenticated user away from sign-in and sign-up pages.
 
 ### Email-Based Authentication
 

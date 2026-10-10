@@ -78,7 +78,7 @@ test('paginates users through the API at six records per page', async ({ page })
             const response = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ firstName: `Page${marker}`, lastName: `User${index}`, email: `page${marker}-${index}@example.com`, password, role: 'user' }),
+                body: JSON.stringify({ firstName: `Page${marker}`, lastName: `User${index}`, email: `page${marker}-${index}@example.com`, password }),
             });
             return response.status;
         }, { index, marker, password });
@@ -159,7 +159,7 @@ test('blocks name changes for inactive users', async ({ page }) => {
     const created = await page.evaluate(async ({ password }) => {
         const response = await fetch('/api/users', {
             method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ firstName: 'Locked', lastName: 'Record', email: `locked${Date.now()}@example.com`, password, role: 'user' }),
+            body: JSON.stringify({ firstName: 'Locked', lastName: 'Record', email: `locked${Date.now()}@example.com`, password }),
         });
         return response.json();
     }, { password });
