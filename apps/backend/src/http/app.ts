@@ -93,7 +93,7 @@ export function buildApp() {
   app.get('/users', { preHandler: requireAdmin }, async (request) => {
     const { page, limit } = parse(usersQuerySchema, request.query);
     const { users: pageUsers, total } = await users.listUsers(page, limit);
-    return { users: pageUsers, page, limit, total, totalPages: Math.ceil(total / limit) };
+    return { users: pageUsers.map(toUserResponse), page, limit, total, totalPages: Math.ceil(total / limit) };
   });
 
   app.post('/users', { preHandler: requireAdmin }, async (request, reply) => {
