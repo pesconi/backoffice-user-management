@@ -13,8 +13,9 @@ import { PrismaUserRepository } from '../users/user.repository.js';
 import { UserService } from '../users/user.service.js';
 
 const passwordSchema = z.string().min(12).max(128);
-const signUpSchema = z.object({ firstName: z.string().trim().min(1).max(100), lastName: z.string().trim().min(1).max(100), password: passwordSchema }).strict();
-const signInSchema = z.object({ userId: z.uuid(), password: passwordSchema }).strict();
+const emailSchema = z.string().trim().email().max(254).transform((email) => email.toLowerCase());
+const signUpSchema = z.object({ firstName: z.string().trim().min(1).max(100), lastName: z.string().trim().min(1).max(100), email: emailSchema, password: passwordSchema }).strict();
+const signInSchema = z.object({ email: emailSchema, password: passwordSchema }).strict();
 const createUserSchema = signUpSchema.extend({ role: z.enum(UserRole).default(UserRole.user) });
 const updateUserSchema = z.object({
     firstName: z.string().trim().min(1).max(100).optional(),
@@ -91,13 +92,13 @@ export async function buildApp() {
 
     app.post('/auth/sign-up', { config: { rateLimit: { max: 3, timeWindow: '15 minutes' } } }, async (request, reply) => {
         const body = parse(signUpSchema, request.body);
-        const { user, session } = await auth.signUp(body.firstName, body.lastName, body.password);
+        const { user, session } = await auth.signUp(body.firstName, body.lastName, body.email, body.password);
         return reply.status(201).send({ user: toUserResponse(user), sessionId: session.id });
     });
 
     app.post('/auth/sign-in', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request) => {
         const body = parse(signInSchema, request.body);
-        const session = await auth.signIn(body.userId, body.password);
+        const session = await auth.signIn(body.email, body.password);
         return { sessionId: session.id };
     });
 
@@ -122,6 +123,7 @@ export async function buildApp() {
         const user = await users.createUser({
             firstName: body.firstName,
             lastName: body.lastName,
+            email: body.email,
             passwordHash: await argonPasswordHasher.hash(body.password),
             role: body.role,
         });

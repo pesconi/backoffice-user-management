@@ -8,6 +8,7 @@ const user = (status: UserStatus = UserStatus.active): User => ({
     id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f',
     firstName: 'Ada',
     lastName: 'Lovelace',
+    email: 'ada@example.com',
     passwordHash: 'hash',
     status,
     role: UserRole.user,
@@ -20,6 +21,7 @@ const user = (status: UserStatus = UserStatus.active): User => ({
 const repository = (currentUser: User): UserRepository => ({
     create: vi.fn(),
     findById: vi.fn().mockResolvedValue(currentUser),
+    findByEmail: vi.fn(),
     update: vi.fn().mockResolvedValue(currentUser),
     softDelete: vi.fn().mockResolvedValue(currentUser),
     incrementLoginsCounter: vi.fn(),

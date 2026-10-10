@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PrismaUserRepository } from './user.repository.js';
 
 const user: User = {
-    id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f', firstName: 'Ada', lastName: 'Lovelace', passwordHash: 'hash', status: UserStatus.active,
+    id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hash', status: UserStatus.active,
     role: UserRole.user, loginsCounter: 0, createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
 };
 

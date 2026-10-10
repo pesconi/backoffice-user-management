@@ -11,10 +11,11 @@ export class AuthService {
         private readonly passwordHasher: PasswordHasher,
     ) { }
 
-    async signUp(firstName: string, lastName: string, password: string): Promise<{ user: User; session: Session }> {
+    async signUp(firstName: string, lastName: string, email: string, password: string): Promise<{ user: User; session: Session }> {
         const user = await this.users.create({
             firstName,
             lastName,
+            email,
             passwordHash: await this.passwordHasher.hash(password),
             role: UserRole.user,
         });
@@ -23,8 +24,8 @@ export class AuthService {
         return { user, session };
     }
 
-    async signIn(userId: string, password: string): Promise<Session> {
-        const user = await this.users.findById(userId);
+    async signIn(email: string, password: string): Promise<Session> {
+        const user = await this.users.findByEmail(email);
         if (!user || !(await this.passwordHasher.verify(user.passwordHash, password))) {
             throw new UnauthorizedError('Invalid credentials.');
         }

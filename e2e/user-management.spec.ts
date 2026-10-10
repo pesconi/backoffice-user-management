@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-const admin = { userId: '00000000-0000-4000-8000-000000000001', password: 'AdminPassword123!' };
+const admin = { email: 'admin@backoffice.local', password: 'AdminPassword123!' };
 const password = 'ManagedUser123!';
 
 async function signIn(page: import('@playwright/test').Page) {
     await page.goto('/sign-in');
-    await page.getByLabel('Account ID').fill(admin.userId);
+    await page.getByLabel('Email').fill(admin.email);
     await page.getByLabel('Password').fill(admin.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
@@ -19,6 +19,7 @@ test('signs up, establishes a session, and opens the dashboard', async ({ page }
     await expect(page).toHaveURL(/\/sign-up$/);
     await page.getByLabel('First name').fill(`New${marker}`);
     await page.getByLabel('Last name').fill('User');
+    await page.getByLabel('Email').fill(`new${marker}@example.com`);
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByLabel('Confirm password').fill(password);
     await page.getByRole('button', { name: 'Create account' }).click();
@@ -30,6 +31,7 @@ test('checks password confirmation before submitting registration', async ({ pag
     await page.goto('/sign-up');
     await page.getByLabel('First name').fill('Mismatch');
     await page.getByLabel('Last name').fill('Check');
+    await page.getByLabel('Email').fill('mismatch@example.com');
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByLabel('Confirm password').fill('DifferentPassword123!');
     await page.getByRole('button', { name: 'Create account' }).click();
@@ -76,7 +78,7 @@ test('paginates users through the API at six records per page', async ({ page })
             const response = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ firstName: `Page${marker}`, lastName: `User${index}`, password, role: 'user' }),
+                body: JSON.stringify({ firstName: `Page${marker}`, lastName: `User${index}`, email: `page${marker}-${index}@example.com`, password, role: 'user' }),
             });
             return response.status;
         }, { index, marker, password });
@@ -97,6 +99,7 @@ test('manages a user through the dashboard and preserves creation time', async (
     await page.goto('/sign-up');
     await page.getByLabel('First name').fill(`Operator${marker}`);
     await page.getByLabel('Last name').fill('Account');
+    await page.getByLabel('Email').fill(`operator${marker}@example.com`);
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByLabel('Confirm password').fill(password);
     await page.getByRole('button', { name: 'Create account' }).click();
@@ -105,6 +108,7 @@ test('manages a user through the dashboard and preserves creation time', async (
     await page.getByRole('button', { name: 'Add user' }).click();
     await page.getByLabel('First name').fill(firstName);
     await page.getByLabel('Last name').fill('Record');
+    await page.getByLabel('Email').fill(`managed${marker}@example.com`);
     await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByLabel('Confirm password').fill(password);
     await page.getByRole('button', { name: 'Create user' }).click();
@@ -155,7 +159,7 @@ test('blocks name changes for inactive users', async ({ page }) => {
     const created = await page.evaluate(async ({ password }) => {
         const response = await fetch('/api/users', {
             method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ firstName: 'Locked', lastName: 'Record', password, role: 'user' }),
+            body: JSON.stringify({ firstName: 'Locked', lastName: 'Record', email: `locked${Date.now()}@example.com`, password, role: 'user' }),
         });
         return response.json();
     }, { password });
@@ -169,11 +173,11 @@ test('blocks name changes for inactive users', async ({ page }) => {
         return response.status;
     }, created.user.id);
     expect(nameUpdateStatus).toBe(403);
-    const signInStatus = await page.evaluate(async ({ userId, password }) => {
+    const signInStatus = await page.evaluate(async ({ email, password }) => {
         const response = await fetch('/api/auth/sign-in', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId, password }),
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }),
         });
         return response.status;
-    }, { userId: created.user.id, password });
+    }, { email: created.user.email, password });
     expect(signInStatus).toBe(403);
 });

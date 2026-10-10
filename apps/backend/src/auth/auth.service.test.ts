@@ -7,7 +7,7 @@ import { AuthService } from './auth.service.js';
 import type { PasswordHasher } from './password-hasher.js';
 
 const user: User = {
-    id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f', firstName: 'Ada', lastName: 'Lovelace', passwordHash: 'hash', status: UserStatus.active,
+    id: 'a1b7d02a-8f28-4de0-91eb-ef8931aedc7f', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hash', status: UserStatus.active,
     role: UserRole.user, loginsCounter: 0, createdAt: new Date(), updatedAt: new Date(), deletedAt: null,
 };
 
@@ -18,6 +18,7 @@ const session: Session = {
 const users: UserRepository = {
     create: vi.fn().mockResolvedValue(user),
     findById: vi.fn(),
+    findByEmail: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),
     incrementLoginsCounter: vi.fn().mockResolvedValue(user),
@@ -37,10 +38,20 @@ describe('AuthService', () => {
     it('creates a session and increments the login count when registering a user', async () => {
         const service = new AuthService(users, new SessionService(sessions), passwordHasher);
 
-        await expect(service.signUp('Ada', 'Lovelace', 'ValidPassword123!')).resolves.toEqual({ user, session });
+        await expect(service.signUp('Ada', 'Lovelace', 'ada@example.com', 'ValidPassword123!')).resolves.toEqual({ user, session });
 
-        expect(users.create).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', passwordHash: 'hashed-password', role: UserRole.user });
+        expect(users.create).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hashed-password', role: UserRole.user });
         expect(sessions.create).toHaveBeenCalledWith(user.id);
         expect(users.incrementLoginsCounter).toHaveBeenCalledWith(user.id);
+    });
+
+    it('authenticates using an email address', async () => {
+        vi.mocked(users.findByEmail).mockResolvedValue(user);
+        vi.mocked(passwordHasher.verify).mockResolvedValue(true);
+        const service = new AuthService(users, new SessionService(sessions), passwordHasher);
+
+        await expect(service.signIn(user.email, 'ValidPassword123!')).resolves.toEqual(session);
+
+        expect(users.findByEmail).toHaveBeenCalledWith(user.email);
     });
 });

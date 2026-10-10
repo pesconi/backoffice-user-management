@@ -1,11 +1,13 @@
-import { PrismaClient, type Prisma, type User, UserStatus } from '@prisma/client';
+import { PrismaClient, Prisma, type User, UserStatus } from '@prisma/client';
+import { ConflictError } from '../domain/errors.js';
 
-export type CreateUserInput = Pick<User, 'firstName' | 'lastName' | 'passwordHash' | 'role'>;
+export type CreateUserInput = Pick<User, 'firstName' | 'lastName' | 'email' | 'passwordHash' | 'role'>;
 export type UpdateUserInput = Partial<Pick<User, 'firstName' | 'lastName' | 'role' | 'status'>>;
 
 export interface UserRepository {
     create(input: CreateUserInput): Promise<User>;
     findById(id: string): Promise<User | null>;
+    findByEmail(email: string): Promise<User | null>;
     update(id: string, input: UpdateUserInput): Promise<User>;
     softDelete(id: string): Promise<User>;
     incrementLoginsCounter(id: string): Promise<User>;
@@ -16,12 +18,23 @@ export interface UserRepository {
 export class PrismaUserRepository implements UserRepository {
     constructor(private readonly prisma: PrismaClient) { }
 
-    create(input: CreateUserInput): Promise<User> {
-        return this.prisma.user.create({ data: input });
+    async create(input: CreateUserInput): Promise<User> {
+        try {
+            return await this.prisma.user.create({ data: input });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                throw new ConflictError('An account with this email already exists.');
+            }
+            throw error;
+        }
     }
 
     findById(id: string): Promise<User | null> {
         return this.prisma.user.findFirst({ where: { id, deletedAt: null } });
+    }
+
+    findByEmail(email: string): Promise<User | null> {
+        return this.prisma.user.findFirst({ where: { email, deletedAt: null } });
     }
 
     async update(id: string, input: UpdateUserInput): Promise<User> {

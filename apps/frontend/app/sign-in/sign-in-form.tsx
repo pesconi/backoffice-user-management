@@ -21,7 +21,7 @@ export function SignInForm() {
     }
 
     return <form className="border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[7px_7px_0_var(--line)] sm:p-8" onSubmit={submit}>
-        <label className="mb-5 block text-sm font-bold">Account ID<input className="focus-ring mt-2 block w-full border border-[var(--line)] bg-transparent px-3 py-3 font-mono text-sm" name="userId" required /></label>
+        <label className="mb-5 block text-sm font-bold">Email<input className="focus-ring mt-2 block w-full border border-[var(--line)] bg-transparent px-3 py-3" name="email" type="email" autoComplete="email" required /></label>
         <label className="mb-5 block text-sm font-bold">Password<input className="focus-ring mt-2 block w-full border border-[var(--line)] bg-transparent px-3 py-3" name="password" type="password" minLength={12} required /></label>
         {error && <p className="mb-5 border-l-4 border-[var(--accent)] pl-3 text-sm text-[var(--accent)]" role="alert">{error}</p>}
         <button className="focus-ring w-full bg-[var(--accent)] px-4 py-3 font-bold text-[var(--accent-ink)] disabled:opacity-60" disabled={submitting}>{submitting ? 'Signing in...' : 'Sign in'}</button>

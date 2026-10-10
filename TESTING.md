@@ -15,14 +15,14 @@ pnpm build
 
 | ID | Requirement | Verification | Test location |
 | --- | --- | --- | --- |
-| BE-01 | Create a user and persist the defined user fields | Registration creates a user, password hash, session, and login count | `apps/backend/src/auth/auth.service.test.ts` |
+| BE-01 | Create a user and persist the defined user fields | Registration creates a user with a unique email address, password hash, session, and login count | `apps/backend/src/auth/auth.service.test.ts` |
 | BE-02 | Creation time is immutable and last-update time changes | The API rejects `createdAt`; Prisma owns `updatedAt` | `e2e/user-management.spec.ts` |
 | BE-03 | Inactive users cannot change their first or last name | API and dashboard update are rejected after deactivation | `apps/backend/src/users/user.service.test.ts`, `e2e/user-management.spec.ts` |
 | BE-04 | Inactive users cannot create sessions | The session service rejects the user and sign-in returns `403` | `apps/backend/src/sessions/session.service.test.ts`, `e2e/user-management.spec.ts` |
 | BE-05 | Create and terminate sessions | Registration and sign-in create sessions; sign-out invalidates the cookie token | `apps/backend/src/auth/auth.service.test.ts`, `e2e/user-management.spec.ts` |
 | BE-06 | Remove a user safely | Soft deletion and deactivation terminate active sessions in database transactions | `apps/backend/src/users/user.repository.test.ts` |
 | UI-01 | No session opens sign-up; passwords must match before registration | The root route opens sign-up and mismatch is caught before a backend call | `e2e/user-management.spec.ts` |
-| UI-02 | Sign-up and sign-in create a session and open the dashboard | Both flows are covered from the browser | `e2e/user-management.spec.ts` |
+| UI-02 | Sign-up and email sign-in create a session and open the dashboard | Both flows are covered from the browser | `e2e/user-management.spec.ts` |
 | UI-03 | Active sessions bypass sign-in/sign-up; stale sessions are denied | Middleware redirects active users to the dashboard and terminated sessions to sign-in | `e2e/user-management.spec.ts` |
 | UI-04 | Dashboard can list, create, update, and delete users | The browser performs all four operations through visible controls | `e2e/user-management.spec.ts` |
 | UI-05 | List pagination contains six users per page | The dashboard renders six rows and navigates to the next page | `e2e/user-management.spec.ts` |

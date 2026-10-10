@@ -29,10 +29,10 @@ The Compose startup waits for PostgreSQL health, applies Prisma migrations, seed
 
 | Field | Value |
 | --- | --- |
-| Account ID | `00000000-0000-4000-8000-000000000001` |
+| Email | `admin@backoffice.local` |
 | Password | `AdminPassword123!` |
 
-The account identifier is a UUID because the defined user entity has no email or username field. Change `ADMIN_PASSWORD` in `.env` outside local evaluation.
+Change `ADMIN_PASSWORD` in `.env` outside local evaluation.
 
 ## Technical Decisions & Architecture
 
@@ -49,6 +49,10 @@ The API accepts a page and enforces `limit=6`. It converts the page into Prisma 
 The backend treats the session UUID as the auth token. Both registration and sign-in establish a session. The frontend receives it only through a Next.js route handler, which stores it in an HttpOnly, SameSite cookie. Browser code cannot read the session ID; authenticated route handlers relay it to the backend as a Bearer token.
 
 The dashboard follows the assessment assumption that an authenticated user is the operating administrator. Middleware validates the session with the backend before allowing protected routes or redirecting an authenticated user away from sign-in and sign-up pages.
+
+### Email-Based Authentication
+
+The assessment's user domain does not define a human-readable login identifier. The implementation adds a unique email address so users can sign in without retaining an internal UUID. Email is normalized to lowercase at the API boundary and protected by a database uniqueness constraint.
 
 ### Container Startup
 
