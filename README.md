@@ -1,6 +1,6 @@
 # Backoffice User Management
 
-A production-oriented back-office user management system with secure administrative access, soft deletion, and database-backed pagination.
+A production-oriented back-office user management system with session-protected access, soft deletion, and database-backed pagination.
 
 ## Tech Stack
 
@@ -19,13 +19,13 @@ docker compose up --build
 
 Open `http://localhost:3000` when startup completes.
 
-Compose includes local development defaults, so an `.env` file is not required for evaluation. To override the database or administrator credentials, copy `.env.example` to `.env` before startup. Never use the included defaults outside local development.
+Compose includes local development defaults, so an `.env` file is not required for evaluation. To override the database or seeded account credentials, copy `.env.example` to `.env` before startup. Never use the included defaults outside local development.
 
 The backend is intentionally available only on the internal Compose network. The frontend is bound to `127.0.0.1:3000`, limiting the local evaluation instance to the host machine.
 
 The Compose startup waits for PostgreSQL health, applies Prisma migrations, seeds the administrator, and starts both applications.
 
-### Default Administrator
+### Default Seeded Account
 
 | Field | Value |
 | --- | --- |
@@ -46,7 +46,9 @@ The API accepts a page and enforces `limit=6`. It converts the page into Prisma 
 
 ### Session Handling
 
-The backend treats the session UUID as the auth token. The frontend receives it only through a Next.js route handler, which stores it in an HttpOnly, SameSite cookie. Browser code cannot read the session ID; authenticated route handlers relay it to the backend as a Bearer token.
+The backend treats the session UUID as the auth token. Both registration and sign-in establish a session. The frontend receives it only through a Next.js route handler, which stores it in an HttpOnly, SameSite cookie. Browser code cannot read the session ID; authenticated route handlers relay it to the backend as a Bearer token.
+
+The dashboard follows the assessment assumption that an authenticated user is the operating administrator. Middleware validates the session with the backend before allowing protected routes or redirecting an authenticated user away from sign-in and sign-up pages.
 
 ### Container Startup
 
@@ -54,4 +56,4 @@ PostgreSQL has a healthcheck. The backend entrypoint also waits with `pg_isready
 
 ## Validation
 
-Run unit tests with `pnpm --filter @backoffice/backend test`. After starting the Compose stack, run browser flows with `pnpm test:e2e`.
+Run unit tests with `pnpm --filter @backoffice/backend test`. After starting the Compose stack, run browser flows with `pnpm test:e2e`. The browser suite covers registration with automatic sign-in, sign-in, terminated-session routing, user pagination, inactive-user validation, and theme persistence.
