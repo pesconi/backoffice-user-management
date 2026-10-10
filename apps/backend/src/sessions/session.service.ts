@@ -14,7 +14,7 @@ export class SessionService {
 
     async requireActiveSession(sessionId: string): Promise<{ user: User; session: Session }> {
         const activeSession = await this.sessions.findActiveWithUser(sessionId);
-        if (!activeSession || activeSession.user.status === UserStatus.inactive) {
+        if (!activeSession || activeSession.expiresAt <= new Date() || activeSession.user.status === UserStatus.inactive) {
             throw new UnauthorizedError('Session is invalid or has been terminated.');
         }
         return { user: activeSession.user, session: activeSession };

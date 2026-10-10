@@ -17,7 +17,7 @@ export class PrismaSessionRepository implements SessionRepository {
 
     findActiveWithUser(sessionId: string): Promise<ActiveSession | null> {
         return this.prisma.session.findFirst({
-            where: { id: sessionId, terminatedAt: null, user: { deletedAt: null } },
+            where: { id: sessionId, terminatedAt: null, expiresAt: { gt: new Date() }, user: { deletedAt: null } },
             include: { user: true },
         });
     }
