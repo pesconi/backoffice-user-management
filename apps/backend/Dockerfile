@@ -14,5 +14,6 @@ RUN pnpm install --frozen-lockfile \
     && sed -i 's/\r$//' apps/backend/docker-entrypoint.sh \
     && chmod +x apps/backend/docker-entrypoint.sh
 
+USER node
 EXPOSE 4000
 ENTRYPOINT ["/app/apps/backend/docker-entrypoint.sh"]
