@@ -26,6 +26,17 @@ test('signs up, establishes a session, and opens the dashboard', async ({ page }
     await expect(page.getByRole('heading', { name: 'User management' })).toBeVisible();
 });
 
+test('checks password confirmation before submitting registration', async ({ page }) => {
+    await page.goto('/sign-up');
+    await page.getByLabel('First name').fill('Mismatch');
+    await page.getByLabel('Last name').fill('Check');
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill('DifferentPassword123!');
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page.getByText('Passwords must match before registration.', { exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-up$/);
+});
+
 test('signs in and persists a selected theme', async ({ page }) => {
     await signIn(page);
     const initialTheme = await page.locator('html').getAttribute('class');
@@ -34,6 +45,8 @@ test('signs in and persists a selected theme', async ({ page }) => {
     const selectedTheme = await page.locator('html').getAttribute('class');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('class', selectedTheme ?? '');
+    await page.goto('/sign-up');
+    await expect(page).toHaveURL(/\/dashboard$/);
 });
 
 test('redirects a terminated session to sign-in before loading the dashboard', async ({ page, context }) => {
@@ -76,6 +89,67 @@ test('paginates users through the API at six records per page', async ({ page })
     await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
 });
 
+test('manages a user through the dashboard and preserves creation time', async ({ page }) => {
+    const marker = Date.now();
+    const firstName = `Managed${marker}`;
+    const updatedFirstName = `Updated${marker}`;
+
+    await page.goto('/sign-up');
+    await page.getByLabel('First name').fill(`Operator${marker}`);
+    await page.getByLabel('Last name').fill('Account');
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill(password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page.getByRole('button', { name: 'Add user' }).click();
+    await page.getByLabel('First name').fill(firstName);
+    await page.getByLabel('Last name').fill('Record');
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill(password);
+    await page.getByRole('button', { name: 'Create user' }).click();
+    await expect(page.getByText(`${firstName} Record`)).toBeVisible();
+
+    const createdUser = await page.evaluate(async (name) => {
+        const response = await fetch('/api/users?page=1');
+        const payload = await response.json();
+        return payload.users.find((user: { firstName: string }) => user.firstName === name);
+    }, firstName);
+    expect(createdUser).toBeDefined();
+
+    await page.getByRole('button', { name: `Edit ${firstName} Record` }).click();
+    await page.getByLabel('First name').fill(updatedFirstName);
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText(`${updatedFirstName} Record`)).toBeVisible();
+
+    const managedUser = await page.evaluate(async (name) => {
+        const response = await fetch('/api/users?page=1');
+        const payload = await response.json();
+        return payload.users.find((user: { firstName: string }) => user.firstName === name);
+    }, updatedFirstName);
+    expect(managedUser).toBeDefined();
+    expect(managedUser.createdAt).toBe(createdUser.createdAt);
+    expect(new Date(managedUser.updatedAt).getTime()).toBeGreaterThan(new Date(createdUser.updatedAt).getTime());
+
+    const timestampStatus = await page.evaluate(async ({ id }) => {
+        const response = await fetch(`/api/users/${id}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ createdAt: '2000-01-01T00:00:00.000Z' }),
+        });
+        return response.status;
+    }, managedUser);
+    expect(timestampStatus).toBe(400);
+
+    const deleteResponse = page.waitForResponse((response) => response.url().endsWith(`/api/users/${managedUser.id}`)
+        && response.request().method() === 'DELETE');
+    await page.getByRole('button', { name: `Delete ${updatedFirstName} Record` }).click();
+    await page.getByRole('button', { name: 'Remove user' }).click();
+    expect((await deleteResponse).status()).toBe(204);
+    await page.reload();
+    await expect(page.getByText(`${updatedFirstName} Record`)).not.toBeVisible();
+});
+
 test('blocks name changes for inactive users', async ({ page }) => {
     await signIn(page);
     const created = await page.evaluate(async ({ password }) => {
@@ -95,4 +169,11 @@ test('blocks name changes for inactive users', async ({ page }) => {
         return response.status;
     }, created.user.id);
     expect(nameUpdateStatus).toBe(403);
+    const signInStatus = await page.evaluate(async ({ userId, password }) => {
+        const response = await fetch('/api/auth/sign-in', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ userId, password }),
+        });
+        return response.status;
+    }, { userId: created.user.id, password });
+    expect(signInStatus).toBe(403);
 });

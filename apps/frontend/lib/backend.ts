@@ -16,6 +16,7 @@ export async function authenticatedBackendRequest(path: string, init: RequestIni
 
 export async function proxyBackendResponse(response: Response | null) {
     if (!response) return NextResponse.json({ error: 'Authentication is required.' }, { status: 401 });
+    if (response.status === 204) return new NextResponse(null, { status: response.status });
     const body = await response.text();
     return new NextResponse(body, {
         status: response.status,
