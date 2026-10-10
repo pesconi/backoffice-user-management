@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyRequest } from 'fastify';
 import { type User, UserRole, UserStatus } from '@prisma/client';
 import { z, ZodError } from 'zod';
@@ -48,24 +49,35 @@ const extractBearerToken = (request: FastifyRequest): string => {
 
 const toUserResponse = ({ passwordHash: _passwordHash, ...user }: Awaited<ReturnType<PrismaUserRepository['create']>>) => user;
 
+const isHttpError = (error: unknown): error is { statusCode: number } => typeof error === 'object'
+    && error !== null
+    && 'statusCode' in error
+    && typeof error.statusCode === 'number';
+
 declare module 'fastify' {
     interface FastifyRequest {
         authenticatedAdmin?: User;
     }
 }
 
-export function buildApp() {
+export async function buildApp() {
     const userRepository = new PrismaUserRepository(prisma);
     const sessionService = new SessionService(new PrismaSessionRepository(prisma));
     const users = new UserService(userRepository);
     const auth = new AuthService(userRepository, sessionService, argonPasswordHasher);
     const app = Fastify({ logger: true });
 
-    void app.register(cors, { origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000' });
+    await app.register(cors, { origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000' });
+    await app.register(rateLimit, {
+        global: false,
+        errorResponseBuilder: (_request, context) => ({ statusCode: context.statusCode, error: 'Too many requests. Please try again later.' }),
+    });
 
     app.setErrorHandler((error, _request, reply) => {
-        const statusCode = error instanceof DomainError ? error.statusCode : 500;
-        const message = error instanceof DomainError ? error.message : 'Internal server error.';
+        const statusCode = error instanceof DomainError ? error.statusCode : isHttpError(error) ? error.statusCode : 500;
+        const message = statusCode === 429
+            ? 'Too many requests. Please try again later.'
+            : error instanceof DomainError ? error.message : 'Internal server error.';
         reply.status(statusCode).send({ error: message });
     });
 
@@ -80,13 +92,13 @@ export function buildApp() {
 
     app.get('/health', async () => ({ status: 'ok' }));
 
-    app.post('/auth/sign-up', async (request, reply) => {
+    app.post('/auth/sign-up', { config: { rateLimit: { max: 3, timeWindow: '15 minutes' } } }, async (request, reply) => {
         const body = parse(signUpSchema, request.body);
         const user = await auth.signUp(body.firstName, body.lastName, body.password);
         return reply.status(201).send({ user: toUserResponse(user) });
     });
 
-    app.post('/auth/sign-in', async (request) => {
+    app.post('/auth/sign-in', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request) => {
         const body = parse(signInSchema, request.body);
         const session = await auth.signIn(body.userId, body.password);
         return { sessionId: session.id };
