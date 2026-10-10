@@ -12,15 +12,12 @@ export class AuthService {
     ) { }
 
     async signUp(firstName: string, lastName: string, email: string, password: string): Promise<{ user: User; session: Session }> {
-        const user = await this.users.create({
+        return this.users.createWithSession({
             firstName,
             lastName,
             email,
             passwordHash: await this.passwordHasher.hash(password),
         });
-        const session = await this.sessions.createSession(user);
-        await this.users.incrementLoginsCounter(user.id);
-        return { user, session };
     }
 
     async signIn(email: string, password: string): Promise<Session> {

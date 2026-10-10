@@ -19,6 +19,7 @@ const user = (status: UserStatus = UserStatus.active): User => ({
 
 const repository = (currentUser: User): UserRepository => ({
     create: vi.fn(),
+    createWithSession: vi.fn(),
     findById: vi.fn().mockResolvedValue(currentUser),
     findByEmail: vi.fn(),
     update: vi.fn().mockResolvedValue(currentUser),

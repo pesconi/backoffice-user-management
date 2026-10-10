@@ -17,6 +17,7 @@ const session: Session = {
 
 const users: UserRepository = {
     create: vi.fn().mockResolvedValue(user),
+    createWithSession: vi.fn().mockResolvedValue({ user, session }),
     findById: vi.fn(),
     findByEmail: vi.fn(),
     update: vi.fn(),
@@ -39,9 +40,7 @@ describe('AuthService', () => {
 
         await expect(service.signUp('Ada', 'Lovelace', 'ada@example.com', 'ValidPassword123!')).resolves.toEqual({ user, session });
 
-        expect(users.create).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hashed-password' });
-        expect(sessions.create).toHaveBeenCalledWith(user.id);
-        expect(users.incrementLoginsCounter).toHaveBeenCalledWith(user.id);
+        expect(users.createWithSession).toHaveBeenCalledWith({ firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com', passwordHash: 'hashed-password' });
     });
 
     it('authenticates using an email address', async () => {

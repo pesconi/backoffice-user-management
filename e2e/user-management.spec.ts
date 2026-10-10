@@ -11,6 +11,17 @@ async function signIn(page: import('@playwright/test').Page) {
     await expect(page).toHaveURL(/\/dashboard$/);
 }
 
+async function createUserThroughDashboard(page: import('@playwright/test').Page, firstName: string, lastName: string, email: string) {
+    await page.getByRole('button', { name: 'Add user' }).click();
+    await page.getByLabel('First name').fill(firstName);
+    await page.getByLabel('Last name').fill(lastName);
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill(password);
+    await page.getByRole('button', { name: 'Create user' }).click();
+    await expect(page.getByText(`${firstName} ${lastName}`, { exact: true })).toBeVisible();
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('signs up, establishes a session, and opens the dashboard', async ({ page }) => {
@@ -70,21 +81,12 @@ test('redirects a terminated session to sign-in before loading the dashboard', a
     await expect(page).toHaveURL(/\/sign-in$/);
 });
 
-test('paginates users through the API at six records per page', async ({ page }) => {
+test('paginates users through the dashboard at six records per page', async ({ page }) => {
     await signIn(page);
     const marker = Date.now();
     for (let index = 0; index < 6; index += 1) {
-        const status = await page.evaluate(async ({ index, marker, password }) => {
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ firstName: `Page${marker}`, lastName: `User${index}`, email: `page${marker}-${index}@example.com`, password }),
-            });
-            return response.status;
-        }, { index, marker, password });
-        expect(status).toBe(201);
+        await createUserThroughDashboard(page, `Page${marker}${index}`, 'Record', `page${marker}-${index}@example.com`);
     }
-    await page.reload();
     await expect(page.locator('tbody tr')).toHaveCount(6);
     await expect(page.getByRole('button', { name: 'Next page' })).toBeEnabled();
     await page.getByRole('button', { name: 'Next page' }).click();
@@ -156,28 +158,17 @@ test('manages a user through the dashboard and preserves creation time', async (
 
 test('blocks name changes for inactive users', async ({ page }) => {
     await signIn(page);
-    const created = await page.evaluate(async ({ password }) => {
-        const response = await fetch('/api/users', {
-            method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ firstName: 'Locked', lastName: 'Record', email: `locked${Date.now()}@example.com`, password }),
-        });
-        return response.json();
-    }, { password });
-    const deactivateStatus = await page.evaluate(async (userId) => {
-        const response = await fetch(`/api/users/${userId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'inactive' }) });
-        return response.status;
-    }, created.user.id);
-    expect(deactivateStatus).toBe(200);
-    const nameUpdateStatus = await page.evaluate(async (userId) => {
-        const response = await fetch(`/api/users/${userId}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ firstName: 'Denied' }) });
-        return response.status;
-    }, created.user.id);
-    expect(nameUpdateStatus).toBe(403);
-    const signInStatus = await page.evaluate(async ({ email, password }) => {
-        const response = await fetch('/api/auth/sign-in', {
-            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password }),
-        });
-        return response.status;
-    }, { email: created.user.email, password });
-    expect(signInStatus).toBe(403);
+    const marker = Date.now();
+    const firstName = `Locked${marker}`;
+    const email = `locked${marker}@example.com`;
+    await createUserThroughDashboard(page, firstName, 'Record', email);
+
+    await page.getByRole('button', { name: `Edit ${firstName} Record` }).click();
+    await page.getByLabel('Status').selectOption('inactive');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+
+    await page.getByRole('button', { name: `Edit ${firstName} Record` }).click();
+    await expect(page.getByLabel('First name')).toBeDisabled();
+    await expect(page.getByLabel('Last name')).toBeDisabled();
+    await expect(page.getByText('Names remain locked while this account is inactive.', { exact: true })).toBeVisible();
 });

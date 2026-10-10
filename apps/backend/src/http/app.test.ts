@@ -1,4 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../database/prisma.js', () => ({
+    prisma: { user: { findFirst: vi.fn().mockResolvedValue(null) } },
+}));
+
 import { buildApp } from './app.js';
 
 describe('authentication rate limits', () => {
@@ -16,15 +21,15 @@ describe('authentication rate limits', () => {
             const response = await app.inject({
                 method: 'POST',
                 url: '/auth/sign-in',
-                payload: { userId: 'not-a-uuid', password: 'ValidLength123!' },
+                payload: { email: 'missing@example.com', password: 'ValidLength123!' },
             });
-            expect(response.statusCode).toBe(400);
+            expect(response.statusCode).toBe(401);
         }
 
         const response = await app.inject({
             method: 'POST',
             url: '/auth/sign-in',
-            payload: { userId: 'not-a-uuid', password: 'ValidLength123!' },
+            payload: { email: 'missing@example.com', password: 'ValidLength123!' },
         });
 
         expect(response.statusCode).toBe(429);

@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, type User, UserStatus } from '@prisma/client';
+import { PrismaClient, Prisma, type Session, type User, UserStatus } from '@prisma/client';
 import { ConflictError } from '../domain/errors.js';
 
 export type CreateUserInput = Pick<User, 'firstName' | 'lastName' | 'email' | 'passwordHash'>;
@@ -6,6 +6,7 @@ export type UpdateUserInput = Partial<Pick<User, 'firstName' | 'lastName' | 'sta
 
 export interface UserRepository {
     create(input: CreateUserInput): Promise<User>;
+    createWithSession(input: CreateUserInput): Promise<{ user: User; session: Session }>;
     findById(id: string): Promise<User | null>;
     findByEmail(email: string): Promise<User | null>;
     update(id: string, input: UpdateUserInput): Promise<User>;
@@ -20,6 +21,25 @@ export class PrismaUserRepository implements UserRepository {
     async create(input: CreateUserInput): Promise<User> {
         try {
             return await this.prisma.user.create({ data: input });
+        } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                throw new ConflictError('An account with this email already exists.');
+            }
+            throw error;
+        }
+    }
+
+    async createWithSession(input: CreateUserInput): Promise<{ user: User; session: Session }> {
+        try {
+            return await this.prisma.$transaction(async (transaction) => {
+                const user = await transaction.user.create({ data: input });
+                const session = await transaction.session.create({ data: { userId: user.id } });
+                const registeredUser = await transaction.user.update({
+                    where: { id: user.id },
+                    data: { loginsCounter: { increment: 1 } },
+                });
+                return { user: registeredUser, session };
+            });
         } catch (error) {
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
                 throw new ConflictError('An account with this email already exists.');
