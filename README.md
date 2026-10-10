@@ -11,14 +11,15 @@ A production-oriented back-office user management system with secure administrat
 
 ## How to Run
 
-1. Copy `.env.example` to `.env` and replace placeholder values as appropriate.
-2. Run:
+From a clean clone, run:
 
-   ```sh
-   docker-compose up --build
-   ```
+```sh
+docker compose up --build
+```
 
-3. Open `http://localhost:3000`.
+Open `http://localhost:3000` when startup completes.
+
+Compose includes local development defaults, so an `.env` file is not required for evaluation. To override the database or administrator credentials, copy `.env.example` to `.env` before startup. Never use the included defaults outside local development.
 
 The Compose startup waits for PostgreSQL health, applies Prisma migrations, seeds the administrator, and starts both applications.
 
