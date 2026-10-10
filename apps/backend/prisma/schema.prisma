@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum UserRole {
+  admin
+  user
+}
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  firstName     String
+  lastName      String
+  passwordHash  String
+  status        UserStatus @default(active)
+  role          UserRole   @default(user)
+  loginsCounter Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+  sessions      Session[]
+
+  @@index([deletedAt])
+  @@index([status, deletedAt])
+}
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  createdAt    DateTime  @default(now())
+  terminatedAt DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, terminatedAt])
+}
