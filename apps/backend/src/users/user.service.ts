@@ -1,4 +1,4 @@
-import { type User, UserStatus } from '@prisma/client';
+import { type User, UserRole, UserStatus } from '@prisma/client';
 import { ForbiddenError, NotFoundError } from '../domain/errors.js';
 import { type CreateUserInput, type UpdateUserInput, type UserRepository } from './user.repository.js';
 
@@ -9,7 +9,7 @@ export class UserService {
         return this.users.create(input);
     }
 
-    async updateUser(id: string, input: UpdateUserInput): Promise<User> {
+    async updateUser(id: string, input: UpdateUserInput, actorId: string): Promise<User> {
         const user = await this.getUser(id);
         const isChangingName = input.firstName !== undefined || input.lastName !== undefined;
 
@@ -17,12 +17,26 @@ export class UserService {
             throw new ForbiddenError('Inactive users cannot have their name changed.');
         }
 
+        const removesAdminAccess = input.status === UserStatus.inactive || input.role === UserRole.user;
+        if (user.role === UserRole.admin && removesAdminAccess) {
+            if (id === actorId) {
+                throw new ForbiddenError('Administrators cannot remove their own access.');
+            }
+            await this.ensureAnotherActiveAdmin(user);
+        }
+
         // Prisma's @updatedAt is the sole timestamp authority; createdAt is never accepted here.
         return this.users.update(id, input);
     }
 
-    async softDeleteUser(id: string): Promise<User> {
-        await this.getUser(id);
+    async softDeleteUser(id: string, actorId: string): Promise<User> {
+        const user = await this.getUser(id);
+        if (id === actorId) {
+            throw new ForbiddenError('Administrators cannot delete their own account.');
+        }
+        if (user.role === UserRole.admin) {
+            await this.ensureAnotherActiveAdmin(user);
+        }
         return this.users.softDelete(id);
     }
 
@@ -36,5 +50,11 @@ export class UserService {
             throw new NotFoundError('User not found.');
         }
         return user;
+    }
+
+    private async ensureAnotherActiveAdmin(user: User): Promise<void> {
+        if (user.status === UserStatus.active && await this.users.countActiveAdmins() <= 1) {
+            throw new ForbiddenError('At least one active administrator must remain.');
+        }
     }
 }

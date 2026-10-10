@@ -24,6 +24,7 @@ const repository = (currentUser: User): UserRepository => ({
     softDelete: vi.fn().mockResolvedValue(currentUser),
     incrementLoginsCounter: vi.fn(),
     findPage: vi.fn(),
+    countActiveAdmins: vi.fn().mockResolvedValue(2),
 });
 
 describe('UserService', () => {
@@ -31,7 +32,7 @@ describe('UserService', () => {
         const users = repository(user(UserStatus.inactive));
         const service = new UserService(users);
 
-        await expect(service.updateUser(user().id, { firstName: 'Grace' })).rejects.toBeInstanceOf(ForbiddenError);
+        await expect(service.updateUser(user().id, { firstName: 'Grace' }, 'admin-id')).rejects.toBeInstanceOf(ForbiddenError);
         expect(users.update).not.toHaveBeenCalled();
     });
 
@@ -39,7 +40,7 @@ describe('UserService', () => {
         const users = repository(user(UserStatus.inactive));
         const service = new UserService(users);
 
-        await service.updateUser(user().id, { role: UserRole.admin });
+        await service.updateUser(user().id, { role: UserRole.admin }, 'admin-id');
         expect(users.update).toHaveBeenCalledWith(user().id, { role: UserRole.admin });
     });
 
@@ -55,7 +56,26 @@ describe('UserService', () => {
         const users = repository(user());
         const service = new UserService(users);
 
-        await service.updateUser(user().id, { firstName: 'Grace' });
+        await service.updateUser(user().id, { firstName: 'Grace' }, 'admin-id');
         expect(users.update).toHaveBeenCalledWith(user().id, { firstName: 'Grace' });
+    });
+
+    it('preserves the final active administrator', async () => {
+        const admin = { ...user(), role: UserRole.admin };
+        const users = repository(admin);
+        vi.mocked(users.countActiveAdmins).mockResolvedValue(1);
+        const service = new UserService(users);
+
+        await expect(service.updateUser(admin.id, { status: UserStatus.inactive }, 'another-admin')).rejects.toBeInstanceOf(ForbiddenError);
+        expect(users.update).not.toHaveBeenCalled();
+    });
+
+    it('prevents an administrator from deleting their own account', async () => {
+        const admin = { ...user(), role: UserRole.admin };
+        const users = repository(admin);
+        const service = new UserService(users);
+
+        await expect(service.softDeleteUser(admin.id, admin.id)).rejects.toBeInstanceOf(ForbiddenError);
+        expect(users.softDelete).not.toHaveBeenCalled();
     });
 });

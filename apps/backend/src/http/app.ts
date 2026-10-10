@@ -1,6 +1,6 @@
 import cors from '@fastify/cors';
 import Fastify, { type FastifyRequest } from 'fastify';
-import { UserRole, UserStatus } from '@prisma/client';
+import { type User, UserRole, UserStatus } from '@prisma/client';
 import { z, ZodError } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import { argonPasswordHasher } from '../auth/password-hasher.js';
@@ -48,6 +48,12 @@ const extractBearerToken = (request: FastifyRequest): string => {
 
 const toUserResponse = ({ passwordHash: _passwordHash, ...user }: Awaited<ReturnType<PrismaUserRepository['create']>>) => user;
 
+declare module 'fastify' {
+    interface FastifyRequest {
+        authenticatedAdmin?: User;
+    }
+}
+
 export function buildApp() {
     const userRepository = new PrismaUserRepository(prisma);
     const sessionService = new SessionService(new PrismaSessionRepository(prisma));
@@ -68,6 +74,7 @@ export function buildApp() {
         if (user.role !== UserRole.admin) {
             throw new ForbiddenError('Administrator access is required.');
         }
+        request.authenticatedAdmin = user;
         return user;
     };
 
@@ -110,12 +117,12 @@ export function buildApp() {
     app.patch('/users/:id', { preHandler: requireAdmin }, async (request) => {
         const { id } = parse(idParamsSchema, request.params);
         const body = parse(updateUserSchema, request.body);
-        return { user: toUserResponse(await users.updateUser(id, body)) };
+        return { user: toUserResponse(await users.updateUser(id, body, request.authenticatedAdmin!.id)) };
     });
 
     app.delete('/users/:id', { preHandler: requireAdmin }, async (request, reply) => {
         const { id } = parse(idParamsSchema, request.params);
-        await users.softDeleteUser(id);
+        await users.softDeleteUser(id, request.authenticatedAdmin!.id);
         return reply.status(204).send();
     });
 

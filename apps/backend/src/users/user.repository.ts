@@ -10,6 +10,7 @@ export interface UserRepository {
     softDelete(id: string): Promise<User>;
     incrementLoginsCounter(id: string): Promise<User>;
     findPage(skip: number, take: number): Promise<{ users: User[]; total: number }>;
+    countActiveAdmins(): Promise<number>;
 }
 
 export class PrismaUserRepository implements UserRepository {
@@ -65,5 +66,11 @@ export class PrismaUserRepository implements UserRepository {
             this.prisma.user.count({ where }),
         ]);
         return { users, total };
+    }
+
+    countActiveAdmins(): Promise<number> {
+        return this.prisma.user.count({
+            where: { role: 'admin', status: UserStatus.active, deletedAt: null },
+        });
     }
 }
