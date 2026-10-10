@@ -11,13 +11,16 @@ export class AuthService {
         private readonly passwordHasher: PasswordHasher,
     ) { }
 
-    async signUp(firstName: string, lastName: string, password: string): Promise<User> {
-        return this.users.create({
+    async signUp(firstName: string, lastName: string, password: string): Promise<{ user: User; session: Session }> {
+        const user = await this.users.create({
             firstName,
             lastName,
             passwordHash: await this.passwordHasher.hash(password),
             role: UserRole.user,
         });
+        const session = await this.sessions.createSession(user);
+        await this.users.incrementLoginsCounter(user.id);
+        return { user, session };
     }
 
     async signIn(userId: string, password: string): Promise<Session> {

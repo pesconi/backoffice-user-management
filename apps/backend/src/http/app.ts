@@ -6,7 +6,7 @@ import { z, ZodError } from 'zod';
 import { AuthService } from '../auth/auth.service.js';
 import { argonPasswordHasher } from '../auth/password-hasher.js';
 import { prisma } from '../database/prisma.js';
-import { DomainError, ForbiddenError, UnauthorizedError, ValidationError } from '../domain/errors.js';
+import { DomainError, UnauthorizedError, ValidationError } from '../domain/errors.js';
 import { PrismaSessionRepository } from '../sessions/session.repository.js';
 import { SessionService } from '../sessions/session.service.js';
 import { PrismaUserRepository } from '../users/user.repository.js';
@@ -56,7 +56,7 @@ const isHttpError = (error: unknown): error is { statusCode: number } => typeof 
 
 declare module 'fastify' {
     interface FastifyRequest {
-        authenticatedAdmin?: User;
+        authenticatedUser?: User;
     }
 }
 
@@ -81,12 +81,9 @@ export async function buildApp() {
         reply.status(statusCode).send({ error: message });
     });
 
-    const requireAdmin = async (request: FastifyRequest) => {
+    const requireAuthenticatedUser = async (request: FastifyRequest) => {
         const { user } = await sessionService.requireActiveSession(extractBearerToken(request));
-        if (user.role !== UserRole.admin) {
-            throw new ForbiddenError('Administrator access is required.');
-        }
-        request.authenticatedAdmin = user;
+        request.authenticatedUser = user;
         return user;
     };
 
@@ -94,8 +91,8 @@ export async function buildApp() {
 
     app.post('/auth/sign-up', { config: { rateLimit: { max: 3, timeWindow: '15 minutes' } } }, async (request, reply) => {
         const body = parse(signUpSchema, request.body);
-        const user = await auth.signUp(body.firstName, body.lastName, body.password);
-        return reply.status(201).send({ user: toUserResponse(user) });
+        const { user, session } = await auth.signUp(body.firstName, body.lastName, body.password);
+        return reply.status(201).send({ user: toUserResponse(user), sessionId: session.id });
     });
 
     app.post('/auth/sign-in', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request) => {
@@ -109,13 +106,18 @@ export async function buildApp() {
         return reply.status(204).send();
     });
 
-    app.get('/users', { preHandler: requireAdmin }, async (request) => {
+    app.get('/auth/session', async (request) => {
+        const { user } = await sessionService.requireActiveSession(extractBearerToken(request));
+        return { user: toUserResponse(user) };
+    });
+
+    app.get('/users', { preHandler: requireAuthenticatedUser }, async (request) => {
         const { page, limit } = parse(usersQuerySchema, request.query);
         const { users: pageUsers, total } = await users.listUsers(page, limit);
         return { users: pageUsers.map(toUserResponse), page, limit, total, totalPages: Math.ceil(total / limit) };
     });
 
-    app.post('/users', { preHandler: requireAdmin }, async (request, reply) => {
+    app.post('/users', { preHandler: requireAuthenticatedUser }, async (request, reply) => {
         const body = parse(createUserSchema, request.body);
         const user = await users.createUser({
             firstName: body.firstName,
@@ -126,15 +128,15 @@ export async function buildApp() {
         return reply.status(201).send({ user: toUserResponse(user) });
     });
 
-    app.patch('/users/:id', { preHandler: requireAdmin }, async (request) => {
+    app.patch('/users/:id', { preHandler: requireAuthenticatedUser }, async (request) => {
         const { id } = parse(idParamsSchema, request.params);
         const body = parse(updateUserSchema, request.body);
-        return { user: toUserResponse(await users.updateUser(id, body, request.authenticatedAdmin!.id)) };
+        return { user: toUserResponse(await users.updateUser(id, body, request.authenticatedUser!.id)) };
     });
 
-    app.delete('/users/:id', { preHandler: requireAdmin }, async (request, reply) => {
+    app.delete('/users/:id', { preHandler: requireAuthenticatedUser }, async (request, reply) => {
         const { id } = parse(idParamsSchema, request.params);
-        await users.softDeleteUser(id, request.authenticatedAdmin!.id);
+        await users.softDeleteUser(id, request.authenticatedUser!.id);
         return reply.status(204).send();
     });
 

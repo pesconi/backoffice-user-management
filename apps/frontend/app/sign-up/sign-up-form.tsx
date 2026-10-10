@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 
 export function SignUpForm() {
+    const router = useRouter();
     const [error, setError] = useState<string>();
-    const [accountId, setAccountId] = useState<string>();
     const [submitting, setSubmitting] = useState(false);
 
     async function submit(event: FormEvent<HTMLFormElement>) {
@@ -19,10 +20,9 @@ export function SignUpForm() {
         const payload = await response.json();
         setSubmitting(false);
         if (!response.ok) return setError(payload.error ?? 'Unable to create the account.');
-        setAccountId(payload.user.id);
+        router.replace('/dashboard');
+        router.refresh();
     }
-
-    if (accountId) return <section className="border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[7px_7px_0_var(--line)] sm:p-8"><p className="mb-3 text-sm font-bold tracking-[0.14em] text-[var(--accent)]">ACCOUNT CREATED</p><p className="mb-2 text-sm text-[var(--muted)]">Use this account ID at sign-in:</p><code className="mb-7 block overflow-x-auto border border-[var(--line)] p-3 text-sm">{accountId}</code><Link className="focus-ring block bg-[var(--accent)] px-4 py-3 text-center font-bold text-[var(--accent-ink)]" href="/sign-in">Continue to sign in</Link></section>;
 
     return <form className="border border-[var(--line)] bg-[var(--panel)] p-6 shadow-[7px_7px_0_var(--line)] sm:p-8" onSubmit={submit}>
         <div className="grid gap-5 sm:grid-cols-2"><label className="block text-sm font-bold">First name<input className="focus-ring mt-2 block w-full border border-[var(--line)] bg-transparent px-3 py-3" name="firstName" maxLength={100} required /></label><label className="block text-sm font-bold">Last name<input className="focus-ring mt-2 block w-full border border-[var(--line)] bg-transparent px-3 py-3" name="lastName" maxLength={100} required /></label></div>

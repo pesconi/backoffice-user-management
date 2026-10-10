@@ -92,7 +92,7 @@ export function DashboardShell() {
             </header>
             <section className="py-10 sm:py-14">
                 <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
-                    <div><p className="mb-2 text-sm font-bold tracking-[0.16em] text-[var(--accent)]">DIRECTORY</p><h1 className="text-4xl leading-none sm:text-6xl">User management</h1><p className="mt-3 text-[var(--muted)]">{userPage ? `${userPage.total} active records` : 'Loading records...'}</p></div>
+                    <div><p className="mb-2 text-sm font-bold tracking-[0.16em] text-[var(--accent)]">DIRECTORY</p><h1 className="text-4xl leading-none sm:text-6xl">User management</h1><p className="mt-3 text-[var(--muted)]">{userPage ? `${userPage.total} records` : 'Loading records...'}</p></div>
                     <button className="focus-ring inline-flex items-center gap-2 bg-[var(--accent)] px-4 py-3 font-bold text-[var(--accent-ink)]" type="button" onClick={() => setEditor(null)}><Plus size={18} /> Add user</button>
                 </div>
                 {error && <p className="mb-5 border-l-4 border-[var(--accent)] bg-[var(--panel)] p-4 text-sm text-[var(--accent)]" role="alert">{error}</p>}

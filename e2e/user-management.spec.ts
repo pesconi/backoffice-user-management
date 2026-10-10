@@ -13,6 +13,19 @@ async function signIn(page: import('@playwright/test').Page) {
 
 test.describe.configure({ mode: 'serial' });
 
+test('signs up, establishes a session, and opens the dashboard', async ({ page }) => {
+    const marker = Date.now();
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/sign-up$/);
+    await page.getByLabel('First name').fill(`New${marker}`);
+    await page.getByLabel('Last name').fill('User');
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await page.getByLabel('Confirm password').fill(password);
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole('heading', { name: 'User management' })).toBeVisible();
+});
+
 test('signs in and persists a selected theme', async ({ page }) => {
     await signIn(page);
     const initialTheme = await page.locator('html').getAttribute('class');
@@ -21,6 +34,25 @@ test('signs in and persists a selected theme', async ({ page }) => {
     const selectedTheme = await page.locator('html').getAttribute('class');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('class', selectedTheme ?? '');
+});
+
+test('redirects a terminated session to sign-in before loading the dashboard', async ({ page, context }) => {
+    await signIn(page);
+    const sessionCookie = (await context.cookies()).find((cookie) => cookie.name === 'session_id');
+    expect(sessionCookie).toBeDefined();
+
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await expect(page).toHaveURL(/\/sign-in$/);
+    await context.addCookies([{
+        name: sessionCookie!.name,
+        value: sessionCookie!.value,
+        url: 'http://localhost:3000',
+        httpOnly: sessionCookie!.httpOnly,
+        secure: sessionCookie!.secure,
+        sameSite: sessionCookie!.sameSite,
+    }]);
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/sign-in$/);
 });
 
 test('paginates users through the API at six records per page', async ({ page }) => {
