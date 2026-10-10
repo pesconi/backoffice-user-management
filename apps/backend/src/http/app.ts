@@ -46,6 +46,8 @@ const extractBearerToken = (request: FastifyRequest): string => {
   return token;
 };
 
+const toUserResponse = ({ passwordHash: _passwordHash, ...user }: Awaited<ReturnType<PrismaUserRepository['create']>>) => user;
+
 export function buildApp() {
   const userRepository = new PrismaUserRepository(prisma);
   const sessionService = new SessionService(new PrismaSessionRepository(prisma));
@@ -74,7 +76,7 @@ export function buildApp() {
   app.post('/auth/sign-up', async (request, reply) => {
     const body = parse(signUpSchema, request.body);
     const user = await auth.signUp(body.firstName, body.lastName, body.password);
-    return reply.status(201).send({ user });
+    return reply.status(201).send({ user: toUserResponse(user) });
   });
 
   app.post('/auth/sign-in', async (request) => {
@@ -102,13 +104,13 @@ export function buildApp() {
       passwordHash: await argonPasswordHasher.hash(body.password),
       role: body.role,
     });
-    return reply.status(201).send({ user });
+    return reply.status(201).send({ user: toUserResponse(user) });
   });
 
   app.patch('/users/:id', { preHandler: requireAdmin }, async (request) => {
     const { id } = parse(idParamsSchema, request.params);
     const body = parse(updateUserSchema, request.body);
-    return { user: await users.updateUser(id, body) };
+    return { user: toUserResponse(await users.updateUser(id, body)) };
   });
 
   app.delete('/users/:id', { preHandler: requireAdmin }, async (request, reply) => {

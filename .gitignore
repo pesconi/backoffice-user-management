@@ -6,6 +6,7 @@ node_modules/
 dist/
 coverage/
 .next/
+*.tsbuildinfo
 playwright-report/
 test-results/
 prisma/*.db
