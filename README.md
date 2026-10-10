@@ -21,6 +21,8 @@ Open `http://localhost:3000` when startup completes.
 
 Compose includes local development defaults, so an `.env` file is not required for evaluation. To override the database or administrator credentials, copy `.env.example` to `.env` before startup. Never use the included defaults outside local development.
 
+The backend is intentionally available only on the internal Compose network. The frontend is bound to `127.0.0.1:3000`, limiting the local evaluation instance to the host machine.
+
 The Compose startup waits for PostgreSQL health, applies Prisma migrations, seeds the administrator, and starts both applications.
 
 ### Default Administrator
