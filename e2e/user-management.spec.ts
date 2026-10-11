@@ -47,6 +47,8 @@ test('checks password confirmation before submitting registration', async ({ pag
     await page.getByLabel('Confirm password').fill('DifferentPassword123!');
     await page.getByRole('button', { name: 'Create account' }).click();
     await expect(page.getByText('Passwords must match before registration.', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByLabel('Confirm password')).toHaveAttribute('aria-describedby', 'sign-up-error');
     await expect(page).toHaveURL(/\/sign-up$/);
 });
 
@@ -60,6 +62,33 @@ test('signs in and persists a selected theme', async ({ page }) => {
     await expect(page.locator('html')).toHaveAttribute('class', selectedTheme ?? '');
     await page.goto('/sign-up');
     await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test('presents accessible dialogs and restores focus', async ({ page }) => {
+    await signIn(page);
+    const addUserButton = page.getByRole('button', { name: 'Add user' });
+    await addUserButton.click();
+    await expect(page.getByRole('dialog', { name: 'Create user' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Close form' })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByRole('button', { name: 'Create user' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Close form' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Create user' })).not.toBeVisible();
+    await expect(addUserButton).toBeFocused();
+
+    const deleteUserButton = page.getByRole('button', { name: /^Delete / }).first();
+    await deleteUserButton.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByRole('button', { name: 'Remove user' })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await expect(deleteUserButton).toBeFocused();
 });
 
 test('redirects a terminated session to sign-in before loading the dashboard', async ({ page, context }) => {
@@ -115,6 +144,7 @@ test('manages a user through the dashboard and preserves creation time', async (
     await page.getByLabel('Confirm password').fill(password);
     await page.getByRole('button', { name: 'Create user' }).click();
     await expect(page.getByText(`${firstName} Record`)).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText('User created.');
 
     const createdUser = await page.evaluate(async (name) => {
         const response = await fetch('/api/users?page=1');
@@ -127,6 +157,7 @@ test('manages a user through the dashboard and preserves creation time', async (
     await page.getByLabel('First name').fill(updatedFirstName);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText(`${updatedFirstName} Record`)).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText('User updated.');
 
     const managedUser = await page.evaluate(async (name) => {
         const response = await fetch('/api/users?page=1');
@@ -152,6 +183,7 @@ test('manages a user through the dashboard and preserves creation time', async (
     await page.getByRole('button', { name: `Delete ${updatedFirstName} Record` }).click();
     await page.getByRole('button', { name: 'Remove user' }).click();
     expect((await deleteResponse).status()).toBe(204);
+    await expect(page.getByRole('status')).toHaveText('User removed.');
     await page.reload();
     await expect(page.getByText(`${updatedFirstName} Record`)).not.toBeVisible();
 });
