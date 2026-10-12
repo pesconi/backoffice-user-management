@@ -1,33 +1,41 @@
-import { type Session, type User } from '@prisma/client';
-import { UnauthorizedError } from '../domain/errors.js';
-import { SessionService } from '../sessions/session.service.js';
-import { type UserRepository } from '../users/user.repository.js';
-import { type PasswordHasher } from './password-hasher.js';
+import { type Session, type User } from "@prisma/client";
+import { UnauthorizedError } from "../domain/errors.js";
+import { SessionService } from "../sessions/session.service.js";
+import { type UserRepository } from "../users/user.repository.js";
+import { type PasswordHasher } from "./password-hasher.js";
 
 export class AuthService {
-    constructor(
-        private readonly users: UserRepository,
-        private readonly sessions: SessionService,
-        private readonly passwordHasher: PasswordHasher,
-    ) { }
+  constructor(
+    private readonly users: UserRepository,
+    private readonly sessions: SessionService,
+    private readonly passwordHasher: PasswordHasher,
+  ) {}
 
-    async signUp(firstName: string, lastName: string, email: string, password: string): Promise<{ user: User; session: Session }> {
-        return this.users.createWithSession({
-            firstName,
-            lastName,
-            email,
-            passwordHash: await this.passwordHasher.hash(password),
-        });
+  async signUp(
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+  ): Promise<{ user: User; session: Session }> {
+    return this.users.createWithSession({
+      firstName,
+      lastName,
+      email,
+      passwordHash: await this.passwordHasher.hash(password),
+    });
+  }
+
+  async signIn(email: string, password: string): Promise<Session> {
+    const user = await this.users.findByEmail(email);
+    if (
+      !user ||
+      !(await this.passwordHasher.verify(user.passwordHash, password))
+    ) {
+      throw new UnauthorizedError("Invalid credentials.");
     }
 
-    async signIn(email: string, password: string): Promise<Session> {
-        const user = await this.users.findByEmail(email);
-        if (!user || !(await this.passwordHasher.verify(user.passwordHash, password))) {
-            throw new UnauthorizedError('Invalid credentials.');
-        }
-
-        const session = await this.sessions.createSession(user);
-        await this.users.incrementLoginsCounter(user.id);
-        return session;
-    }
+    const session = await this.sessions.createSession(user);
+    await this.users.incrementLoginsCounter(user.id);
+    return session;
+  }
 }

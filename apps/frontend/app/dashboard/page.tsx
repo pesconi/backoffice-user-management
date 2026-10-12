@@ -1,5 +1,5 @@
-import { DashboardShell } from './dashboard-shell';
+import { DashboardShell } from "./dashboard-shell";
 
 export default function DashboardPage() {
-    return <DashboardShell />;
+  return <DashboardShell />;
 }

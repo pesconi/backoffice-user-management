@@ -27,10 +27,10 @@ The Compose startup waits for PostgreSQL health, applies Prisma migrations, seed
 
 ### Default Seeded Account
 
-| Field | Value |
-| --- | --- |
-| Email | `admin@backoffice.local` |
-| Password | `AdminPassword123!` |
+| Field    | Value                    |
+| -------- | ------------------------ |
+| Email    | `admin@backoffice.local` |
+| Password | `AdminPassword123!`      |
 
 Change `ADMIN_PASSWORD` in `.env` outside local evaluation.
 
@@ -64,7 +64,11 @@ This assessment intentionally treats every authenticated user as a back-office o
 
 Session IDs are opaque UUID bearer tokens stored in the local database. A production session design should generate high-entropy tokens, persist only their hashes, rotate them on authentication-sensitive events, and define a distributed session and rate-limit store for horizontally scaled deployments. The frontend proxy limits session cookies to `HttpOnly` and `SameSite`, but production should also apply explicit origin checks and CSRF protections to state-changing routes.
 
-The included Docker Compose configuration and seed account are intended for local evaluation only. Production operations also require managed secrets, observability, backups, alerting, and a deployment-specific security review.
+The fixed six-record interface deliberately uses offset pagination: it is simple and appropriate for this bounded directory, but offset cost and page drift grow with large, frequently written datasets. A larger directory should move to cursor pagination using a stable ordering such as `(createdAt, id)`.
+
+Rate limiting is process-local in this Compose deployment. A horizontally scaled deployment should use a shared store such as Redis and apply policies by route, IP address, account identity, and tenant where applicable.
+
+The included Docker Compose configuration and seed account are intended for local evaluation only. Production operations also require managed secrets, structured logs with correlation IDs, metrics and tracing, SLO-based alerting, backups with restore drills, and a deployment-specific security review.
 
 ## Validation
 
