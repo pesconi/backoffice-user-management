@@ -169,12 +169,21 @@ test("paginates users through the dashboard at six records per page", async ({
     );
   }
   await expect(page.locator("tbody tr")).toHaveCount(6);
-  await expect(page.getByText(/Showing 1-6 of \d+ users/)).toBeVisible();
+  const firstPageSummary = page.getByText(/Showing 1-6 of (\d+) users/);
+  await expect(firstPageSummary).toBeVisible();
+  const totalUsers = Number(
+    (await firstPageSummary.textContent())?.match(/of (\d+) users/)?.[1],
+  );
+  expect(totalUsers).toBeGreaterThan(6);
   await expect(page.getByText("Newest records first")).toBeVisible();
   await expect(page.getByRole("button", { name: "Next page" })).toBeEnabled();
   await page.getByRole("button", { name: "Next page" }).click();
   await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
-  await expect(page.getByText(/Showing 7-12 of \d+ users/)).toBeVisible();
+  const secondPageUsers = Math.min(6, totalUsers - 6);
+  await expect(page.locator("tbody tr")).toHaveCount(secondPageUsers);
+  await expect(
+    page.getByText(`Showing 7-${6 + secondPageUsers} of ${totalUsers} users`),
+  ).toBeVisible();
 });
 
 test("manages a user through the dashboard and preserves creation time", async ({

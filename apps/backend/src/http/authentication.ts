@@ -4,31 +4,31 @@ import { UnauthorizedError } from "../domain/errors.js";
 import { SessionService } from "../sessions/session.service.js";
 
 declare module "fastify" {
-    interface FastifyRequest {
-        authenticatedUser?: User;
-    }
+  interface FastifyRequest {
+    authenticatedUser?: User;
+  }
 }
 
 export type RequireAuthenticatedUser = (
-    request: FastifyRequest,
+  request: FastifyRequest,
 ) => Promise<User>;
 
 export const extractBearerToken = (request: FastifyRequest): string => {
-    const [scheme, token] = request.headers.authorization?.split(" ") ?? [];
-    if (scheme !== "Bearer" || !token) {
-        throw new UnauthorizedError("A bearer session token is required.");
-    }
-    return token;
+  const [scheme, token] = request.headers.authorization?.split(" ") ?? [];
+  if (scheme !== "Bearer" || !token) {
+    throw new UnauthorizedError("A bearer session token is required.");
+  }
+  return token;
 };
 
 export const createRequireAuthenticatedUser = (
-    sessionService: SessionService,
+  sessionService: SessionService,
 ): RequireAuthenticatedUser => {
-    return async (request) => {
-        const { user } = await sessionService.requireActiveSession(
-            extractBearerToken(request),
-        );
-        request.authenticatedUser = user;
-        return user;
-    };
+  return async (request) => {
+    const { user } = await sessionService.requireActiveSession(
+      extractBearerToken(request),
+    );
+    request.authenticatedUser = user;
+    return user;
+  };
 };
